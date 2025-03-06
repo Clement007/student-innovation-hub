@@ -1,5 +1,8 @@
 import streamlit as st
 import pandas as pd
+import os
+from PIL import Image
+from io import BytesIO
 
 # Set page configuration
 st.set_page_config(page_title="Student Innovation Hub", page_icon="🚀", layout="wide")
@@ -13,8 +16,13 @@ st.sidebar.title("📌 Navigation")
 page = st.sidebar.radio("Go to:", ["Home", "Submit Assignment", "View Projects", "About"])
 
 # Data Storage
+projects_file = "projects.csv"
 if "projects" not in st.session_state:
-    st.session_state.projects = pd.DataFrame(columns=["Name", "Department", "Module", "Assignment Type", "Assignment Name", "Live Link", "Image", "Group Work"])
+    # Check if the file exists, if it does, load it into the session state
+    if os.path.exists(projects_file):
+        st.session_state.projects = pd.read_csv(projects_file)
+    else:
+        st.session_state.projects = pd.DataFrame(columns=["Name", "Department", "Module", "Assignment Type", "Assignment Name", "Live Link", "Image", "Group Work"])
 
 # Home Page - Latest Projects
 if page == "Home":
@@ -25,7 +33,20 @@ if page == "Home":
         for _, row in latest_projects.iterrows():
             with st.container():
                 col1, col2 = st.columns([1, 3])
-                img_placeholder = "https://via.placeholder.com/100" if row["Image"] is None else row["Image"]
+                
+                # Handling the image properly using PIL.Image if the image exists
+                if row["Image"] is None:
+                    img_placeholder = "images/person.png"
+                else:
+                    # Convert the file path to an image object for display
+                    img_path = row["Image"]
+                    try:
+                        img = Image.open(img_path)
+                        img_placeholder = img
+                    except Exception as e:
+                        st.warning(f"Error loading image: {e}")
+                        img_placeholder = "images/person.png"
+                
                 col1.image(img_placeholder, width=100)
                 col2.markdown(f"### {row['Name']}")
                 col2.markdown(f"📚 **Department:** {row['Department']}")
@@ -51,6 +72,13 @@ elif page == "Submit Assignment":
     
     if st.button("Submit Project"):
         if name and department and module and assignment_type and live_link:
+            # Save the uploaded image if provided
+            image_path = None
+            if image is not None:
+                image_path = os.path.join("temp_images", image.name)
+                with open(image_path, "wb") as f:
+                    f.write(image.getbuffer())
+            
             new_entry = pd.DataFrame({
                 "Name": [name],
                 "Department": [department],
@@ -58,13 +86,17 @@ elif page == "Submit Assignment":
                 "Assignment Type": [assignment_type],
                 "Assignment Name": [assignment_name],
                 "Live Link": [live_link],
-                "Image": [image],
+                "Image": [image_path],
                 "Group Work": [assignment_type == "Group"]
             })
             
             st.session_state.projects = pd.concat([st.session_state.projects, new_entry], ignore_index=True)
+            # Save the updated project list to the CSV file to persist across sessions
+            st.session_state.projects.to_csv(projects_file, index=False)
             st.success("✅ Your project has been submitted successfully!")
-            st.experimental_rerun()  # Refresh the page to show the latest project on Home
+            
+            # Refresh page
+            st.rerun()
         else:
             st.error("⚠️ Please fill out all required fields.")
 
@@ -91,7 +123,20 @@ elif page == "View Projects":
         for _, row in filtered_projects.iterrows():
             with st.container():
                 col1, col2 = st.columns([1, 3])
-                img_placeholder = "https://via.placeholder.com/100" if row["Image"] is None else row["Image"]
+                
+                # Handling the image properly using PIL.Image if the image exists
+                if row["Image"] is None:
+                    img_placeholder = "https://via.placeholder.com/100"
+                else:
+                    # Convert the file path to an image object for display
+                    img_path = row["Image"]
+                    try:
+                        img = Image.open(img_path)
+                        img_placeholder = img
+                    except Exception as e:
+                        st.warning(f"Error loading image: {e}")
+                        img_placeholder = "https://via.placeholder.com/100"
+                
                 col1.image(img_placeholder, width=100)
                 col2.markdown(f"### {row['Name']}")
                 col2.markdown(f"📚 **Department:** {row['Department']}")
