@@ -36,16 +36,19 @@ if page == "Home":
                 
                 # Handling the image properly using PIL.Image if the image exists
                 if row["Image"] is None:
-                    img_placeholder = "images/person.png"
+                    img_placeholder = "https://via.placeholder.com/100"
                 else:
-                    # Convert the file path to an image object for display
-                    img_path = row["Image"]
                     try:
-                        img = Image.open(img_path)
+                        # Open image from file path or memory
+                        img_path = row["Image"]
+                        if os.path.exists(img_path):  # Check if the file exists on disk
+                            img = Image.open(img_path)
+                        else:
+                            img = Image.open(BytesIO(row["Image"]))  # Handle as byte stream if it's stored in memory
                         img_placeholder = img
                     except Exception as e:
                         st.warning(f"Error loading image: {e}")
-                        img_placeholder = "images/person.png"
+                        img_placeholder = "https://via.placeholder.com/100"
                 
                 col1.image(img_placeholder, width=100)
                 col2.markdown(f"### {row['Name']}")
@@ -74,11 +77,23 @@ elif page == "Submit Assignment":
         if name and department and module and assignment_type and live_link:
             # Save the uploaded image if provided
             image_path = None
+            image_bytes = None
             if image is not None:
-                image_path = os.path.join("temp_images", image.name)
-                with open(image_path, "wb") as f:
-                    f.write(image.getbuffer())
+                try:
+                    # Read the image as bytes and store it in memory
+                    image_bytes = image.read()
+                    img = Image.open(BytesIO(image_bytes))  # Open the image from memory
+                    # Create a directory for images if it doesn't exist
+                    if not os.path.exists("temp_images"):
+                        os.makedirs("temp_images")
+                    
+                    # Save the image to the temp directory
+                    image_path = os.path.join("temp_images", image.name)
+                    img.save(image_path)
+                except Exception as e:
+                    st.error(f"⚠️ Error processing the image: {e}")
             
+            # Add the new project data
             new_entry = pd.DataFrame({
                 "Name": [name],
                 "Department": [department],
@@ -86,17 +101,17 @@ elif page == "Submit Assignment":
                 "Assignment Type": [assignment_type],
                 "Assignment Name": [assignment_name],
                 "Live Link": [live_link],
-                "Image": [image_path],
+                "Image": [image_path if image_path else image_bytes],  # Save either path or bytes
                 "Group Work": [assignment_type == "Group"]
             })
             
+            # Update session state and save to CSV
             st.session_state.projects = pd.concat([st.session_state.projects, new_entry], ignore_index=True)
-            # Save the updated project list to the CSV file to persist across sessions
             st.session_state.projects.to_csv(projects_file, index=False)
             st.success("✅ Your project has been submitted successfully!")
             
-            # Refresh page
-            st.rerun()
+            # Refresh the page after submission
+            st.experimental_rerun()
         else:
             st.error("⚠️ Please fill out all required fields.")
 
@@ -128,10 +143,13 @@ elif page == "View Projects":
                 if row["Image"] is None:
                     img_placeholder = "https://via.placeholder.com/100"
                 else:
-                    # Convert the file path to an image object for display
-                    img_path = row["Image"]
                     try:
-                        img = Image.open(img_path)
+                        # Handle image stored in bytes or path
+                        if isinstance(row["Image"], bytes):  # Image stored as bytes
+                            img = Image.open(BytesIO(row["Image"]))
+                        else:  # Image path
+                            img_path = row["Image"]
+                            img = Image.open(img_path)
                         img_placeholder = img
                     except Exception as e:
                         st.warning(f"Error loading image: {e}")
