@@ -10,14 +10,34 @@ st.subheader("A central platform to showcase student projects and assignments")
 
 # Sidebar for navigation
 st.sidebar.title("📌 Navigation")
-page = st.sidebar.radio("Go to:", ["Submit Assignment", "View Projects", "About"])
+page = st.sidebar.radio("Go to:", ["Home", "Submit Assignment", "View Projects", "About"])
 
 # Data Storage
 if "projects" not in st.session_state:
-    st.session_state.projects = pd.DataFrame(columns=["Name", "Department", "Module", "Assignment Type", "Live Link", "Image", "Group Work"])
+    st.session_state.projects = pd.DataFrame(columns=["Name", "Department", "Module", "Assignment Type", "Assignment Name", "Live Link", "Image", "Group Work"])
+
+# Home Page - Latest Projects
+if page == "Home":
+    st.subheader("🏆 Latest Student Projects")
+    
+    if not st.session_state.projects.empty:
+        latest_projects = st.session_state.projects.tail(5)  # Show the latest 5 projects
+        for _, row in latest_projects.iterrows():
+            with st.container():
+                col1, col2 = st.columns([1, 3])
+                img_placeholder = "https://via.placeholder.com/100" if row["Image"] is None else row["Image"]
+                col1.image(img_placeholder, width=100)
+                col2.markdown(f"### {row['Name']}")
+                col2.markdown(f"📚 **Department:** {row['Department']}")
+                col2.markdown(f"📖 **Module:** {row['Module']}")
+                col2.markdown(f"📌 **Assignment:** {row['Assignment Type']} - {row['Assignment Name']}")
+                col2.markdown(f"🌍 [Explore More]({row['Live Link']})", unsafe_allow_html=True)
+                st.markdown("---")
+    else:
+        st.info("No projects have been submitted yet. Be the first to showcase your work!")
 
 # Form for student submission
-if page == "Submit Assignment":
+elif page == "Submit Assignment":
     st.subheader("📩 Submit Your Project")
     
     # Input fields
@@ -27,7 +47,7 @@ if page == "Submit Assignment":
     assignment_type = st.selectbox("Assignment Type", ["Individual", "Group"])
     assignment_name = st.text_input("Assignment Name (e.g., Assignment #1, Final Project)")
     live_link = st.text_input("Live Portfolio Link")
-    image = st.file_uploader("Upload Your Profile Picture", type=["jpg", "png"])
+    image = st.file_uploader("Upload Your Profile Picture or Project Screenshot", type=["jpg", "png"])
     
     if st.button("Submit Project"):
         if name and department and module and assignment_type and live_link:
@@ -36,6 +56,7 @@ if page == "Submit Assignment":
                 "Department": [department],
                 "Module": [module],
                 "Assignment Type": [assignment_type],
+                "Assignment Name": [assignment_name],
                 "Live Link": [live_link],
                 "Image": [image],
                 "Group Work": [assignment_type == "Group"]
@@ -69,13 +90,13 @@ elif page == "View Projects":
         for _, row in filtered_projects.iterrows():
             with st.container():
                 col1, col2 = st.columns([1, 3])
-                if row["Image"]:
-                    col1.image(row["Image"], width=100)
+                img_placeholder = "https://via.placeholder.com/100" if row["Image"] is None else row["Image"]
+                col1.image(img_placeholder, width=100)
                 col2.markdown(f"### {row['Name']}")
                 col2.markdown(f"📚 **Department:** {row['Department']}")
                 col2.markdown(f"📖 **Module:** {row['Module']}")
                 col2.markdown(f"📌 **Assignment:** {row['Assignment Type']} - {row['Assignment Name']}")
-                col2.markdown(f"🌍 [View Project](" + row['Live Link'] + ")")
+                col2.markdown(f"🌍 [Explore More]({row['Live Link']})", unsafe_allow_html=True)
                 st.markdown("---")
     else:
         st.info("No projects found. Please try changing the filters.")
