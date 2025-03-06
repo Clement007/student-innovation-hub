@@ -64,6 +64,7 @@ elif page == "Submit Assignment":
             
             st.session_state.projects = pd.concat([st.session_state.projects, new_entry], ignore_index=True)
             st.success("✅ Your project has been submitted successfully!")
+            st.experimental_rerun()  # Refresh the page to show the latest project on Home
         else:
             st.error("⚠️ Please fill out all required fields.")
 
